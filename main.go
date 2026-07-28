@@ -55,6 +55,19 @@ func main() {
 	if logDir := os.Getenv("LOG_DIR"); logDir != "" {
 		cfg.LogDir = logDir
 	}
+	// 读取日志开关配置（默认 false）
+	if logEnabled := os.Getenv("LOG_ENABLED"); logEnabled != "" {
+		// 解析字符串 "true"/"false" -> bool
+		switch strings.ToLower(logEnabled) {
+		case "true", "1", "y", "yes":
+			cfg.LogEnabled = true
+		case "false", "0", "n", "no":
+			cfg.LogEnabled = false
+		default:
+			// 无效值，保持默认值 false
+			cfg.LogEnabled = false
+		}
+	}
 	// 读取上游代理配置（可选）
 	if proxyAddr := os.Getenv("HTTP_PROXY"); proxyAddr != "" {
 		cfg.HTTPProxy = proxyAddr
@@ -64,7 +77,7 @@ func main() {
 		cfg.HTTPProxy = proxyAddr
 	}
 
-	fmt.Printf("[DEBUG] LogDir=%q, HTTPProxy=%q, Upstream=%q, Listen=%q\n", cfg.LogDir, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)
+	fmt.Printf("[DEBUG] LogDir=%q, LogEnabled=%v, HTTPProxy=%q, Upstream=%q, Listen=%q\n", cfg.LogDir, cfg.LogEnabled, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)
 
 	srv, err := proxy.NewServer(cfg)
 	if err != nil {

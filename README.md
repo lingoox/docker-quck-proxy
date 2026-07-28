@@ -47,6 +47,7 @@ HOST_PORT=5000
 | `LOG_DIR` | (空) | 日志目录（设为空则输出到 stdout） |
 | `HTTP_PROXY` | (空) | **上游** HTTP 代理（当需要经代理访问 Docker Hub 时设置） |
 | `HTTPS_PROXY` | (空) | **上游** HTTPS 代理 |
+| `LOG_ENABLED` | `false` | **是否启用日志输出**（true/false）|
 | `HOST_PORT` | `5000` | Docker Compose 宿主端口 |
 
 ⚠️ 注意：`HTTP_PROXY`/`HTTPS_PROXY` 是 **docker-quck-proxy 自身访问上游时的代理**，与下游 Docker Client 的配置无关。下游仍然直接使用 `localhost:5000` 作为镜像源。

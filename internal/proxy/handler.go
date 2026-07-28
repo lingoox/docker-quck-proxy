@@ -32,6 +32,40 @@ type Logger interface {
 	Println(v ...interface{})
 }
 
+// NoOpLogger is a logger that does nothing (used when logging is disabled).
+type NoOpLogger struct{}
+
+func (n *NoOpLogger) Printf(format string, v ...interface{}) {}
+func (n *NoOpLogger) Errorf(format string, v ...interface{}) {}
+func (n *NoOpLogger) Println(v ...interface{}) {}
+
+// LoggingWrapper wraps a Logger and conditionally forwards calls.
+type LoggingWrapper struct {
+	Logger  Logger
+	Enabled bool
+}
+
+func (w *LoggingWrapper) Printf(format string, v ...interface{}) {
+	if !w.Enabled {
+		return
+	}
+	w.Logger.Printf(format, v...)
+}
+
+func (w *LoggingWrapper) Errorf(format string, v ...interface{}) {
+	if !w.Enabled {
+		return
+	}
+	w.Logger.Errorf(format, v...)
+}
+
+func (w *LoggingWrapper) Println(v ...interface{}) {
+	if !w.Enabled {
+		return
+	}
+	w.Logger.Println(v...)
+}
+
 // FileLogger writes logs to a file.
 type FileLogger struct {
 	logger *log.Logger
@@ -92,6 +126,18 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	// Create logger based on configuration
 	logger := NewLogger(cfg)
+
+	// Apply log enabled/disabled wrapper
+	if !cfg.LogEnabled {
+		// If logging is disabled, use NoOpLogger instead of the real one
+		logger = &NoOpLogger{}
+	} else {
+		// Keep the real logger wrapped (allows future conditional logic)
+		logger = &LoggingWrapper{
+			Logger:  logger,
+			Enabled: true,
+		}
+	}
 
 	// Create HTTP transport, with upstream proxy if configured
 	transport := &http.Transport{
