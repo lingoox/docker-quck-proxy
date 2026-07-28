@@ -13,10 +13,10 @@ import (
 	"docker-quck-proxy/internal/proxy"
 )
 
-// 定义命令行标志
+// 定义命令行标志（默认值为空/零，表示未设置）
 var (
-	upstream   = flag.String("upstream", "", "Upstream Docker Registry (override default)")
-	listen     = flag.String("P", "", "Listen address (short form: -P), also use --listen")
+	upstream   = flag.String("upstream", "", "Upstream Docker Registry (empty to use default)")
+	listen     = flag.String("port", "", "Listen address (empty to use default :5000)")
 	logDir     = flag.String("logdir", "", "Log directory (empty to use stdout)")
 	httpProxy  = flag.String("http-proxy", "", "Upstream HTTP proxy for accessing Docker Hub")
 	httpsProxy = flag.String("https-proxy", "", "Upstream HTTPS proxy for accessing Docker Hub")
@@ -28,40 +28,55 @@ func main() {
 
 	cfg := proxy.DefaultConfig()
 
-	// 优先级：flag > env var > default
-	// Upstream: flag 优先，否则 env var
+	// ==========================================
+	// Upstream: flag (if set) > env var > default from DefaultConfig()
+	// ==========================================
 	if *upstream != "" {
 		cfg.Upstream = *upstream
 	} else if up := os.Getenv("UPSTREAM"); up != "" {
 		cfg.Upstream = up
 	}
 
-	// ListenAddr: flag 优先，否则 env var
+	// ==========================================
+	// ListenAddr: flag (if non-empty) > env var > default :5000
+	// ==========================================
 	if *listen != "" {
 		cfg.ListenAddr = *listen
 	} else if ln := os.Getenv("LISTEN_ADDR"); ln != "" {
 		cfg.ListenAddr = ln
 	}
+	// else: keep default from DefaultConfig() (which is :5000)
 
-	// LogDir: flag 优先，否则 env var
+	// ==========================================
+	// LogDir: flag > env var > empty (stdout)
+	// ==========================================
 	if *logDir != "" {
 		cfg.LogDir = *logDir
 	} else if ld := os.Getenv("LOG_DIR"); ld != "" {
 		cfg.LogDir = ld
 	}
 
-	// HTTP_PROXY: flag 优先，否则 env var
+	// ==========================================
+	// HTTP_PROXY / HTTPS_PROXY: flag > env var > empty
+	// ==========================================
 	if *httpProxy != "" {
 		cfg.HTTPProxy = *httpProxy
 	} else if hp := os.Getenv("HTTP_PROXY"); hp != "" {
 		cfg.HTTPProxy = hp
-	} else if hps := os.Getenv("HTTPS_PROXY"); hps != "" && cfg.HTTPProxy == "" {
-		// fallback to HTTPS_PROXY if HTTP_PROXY not set
+	} else if hps := os.Getenv("HTTPS_PROXY"); hps != "" {
 		cfg.HTTPProxy = hps
 	}
 
-	// LOG_ENABLED: flag 优先，否则 env var
-	if *logEnabled != false { // flag was explicitly set
+	// ==========================================
+	// LOG_ENABLED: check if flag was explicitly used via flag.Visit
+	// ==========================================
+	logEnabledSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "log-enabled" {
+			logEnabledSet = true
+		}
+	})
+	if logEnabledSet {
 		cfg.LogEnabled = *logEnabled
 	} else if le := os.Getenv("LOG_ENABLED"); le != "" {
 		switch strings.ToLower(le) {
@@ -70,9 +85,10 @@ func main() {
 		case "false", "0", "n", "no":
 			cfg.LogEnabled = false
 		default:
-			cfg.LogEnabled = false // default
+			cfg.LogEnabled = false
 		}
 	}
+	// else: keep default from DefaultConfig() (false)
 
 	fmt.Printf("[DEBUG] LogDir=%q, LogEnabled=%v, HTTPProxy=%q, Upstream=%q, Listen=%q\n",
 		cfg.LogDir, cfg.LogEnabled, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)

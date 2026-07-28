@@ -50,13 +50,13 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 
 ### 命令行参数（推荐）
 
-编译后可直接使用命令行标志配置，无需环境变量：
+编译后可直接使用命令行标志配置：
 
 ```bash
 # 示例：指定上游、监听端口、日志目录和启用日志
 ./proxy \
   --upstream https://registry-1.docker.io \
-  -P :5000 \          # 简写形式
+  --port :5000 \          # 可简写为 -p :5000（注意：使用 flag.String("p", ...）定义短形式）
   --logdir ./logs \
   --log-enabled true
 
@@ -66,16 +66,23 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 
 **参数对照表：**
 
-| 长形式 | 简写 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `--upstream` | (无) | `https://registry-1.docker.io` | 上游 Docker Registry |
-| `-P` / `--listen` | `-P` | `:5000` | 监听地址 |
-| `--logdir` | (无) | (空) | 日志目录（空则输出到 stdout） |
-| `--http-proxy` | (无) | (空) | **上游** HTTP 代理（经代理访问 Docker Hub 时使用） |
-| `--https-proxy` | (无) | (空) | **上游** HTTPS 代理 |
-| `--log-enabled` | (无) | `false` | 是否启用日志输出 |
+| 长形式 | 默认值 | 说明 |
+|--------|--------|------|
+| `--upstream` | (空，用 default) | 上游 Docker Registry |
+| `--port` | (空，用 default :5000) | 监听地址 |
+| `--logdir` | (空) | 日志目录（空则输出到 stdout） |
+| `--http-proxy` | (空) | **上游** HTTP 代理（经代理访问 Docker Hub 时使用） |
+| `--https-proxy` | (空) | **上游** HTTPS 代理 |
+| `--log-enabled` | `false` | 是否启用日志输出 |
 
 ⚠️ 注意：`HTTP_PROXY`/`HTTPS_PROXY` 是 **docker-quck-proxy 自身访问上游时的代理**，与下游 Docker Client 的配置无关。下游仍然直接使用 `localhost:5000` 作为镜像源。
+
+也可以通过环境变量设置（命令行参数的优先级高于环境变量）：
+- `UPSTREAM` → `--upstream`
+- `LISTEN_ADDR` → `--port`
+- `LOG_DIR` → `--logdir`
+- `HTTP_PROXY` / `HTTPS_PROXY` → 上游代理
+- `LOG_ENABLED` → `--log-enabled`（支持 `true`/`false` / `1`/`0` / `y`/`n`）
 
 ### 下载并安装二进制（Linux/FreeBSD/macOS）
 
@@ -88,7 +95,7 @@ sudo mv proxy-linux-amd64 /usr/local/bin/proxy
 # 启动（使用命令行参数）
 proxy \
   --upstream https://registry-1.docker.io \
-  -P :5000 \
+  --port :5000 \
   --log-enabled false
 ```
 
