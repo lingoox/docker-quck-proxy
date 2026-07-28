@@ -35,8 +35,14 @@ jobs:
       run: |
         # Helper function to build a binary for a platform
         build() {
-          GOOS=$1 GOARCH=$2 GOARM="${3:-}" CGO_ENABLED=0 go build -o proxy-$4 .
-          echo "Built $4"
+          local platform=$4
+          local output_name="proxy-$platform"
+          # Windows executables need .exe extension
+          if [[ "$1" == "windows" ]]; then
+            output_name="${output_name}.exe"
+          fi
+          GOOS=$1 GOARCH=$2 GOARM="${3:-}" CGO_ENABLED=0 go build -o "$output_name" .
+          echo "Built $output_name"
         }
 
         # Linux x86_64
@@ -48,7 +54,7 @@ jobs:
         # Linux ARMv7 hard-float (Armbian)
         build linux arm 7 armv7hf-linux
 
-        # Windows x86_64
+        # Windows x86_64 (will produce proxy-windows-amd64.exe)
         build windows amd64 "" windows-amd64
 
         # macOS Intel
