@@ -1,0 +1,34 @@
+# Go ignore
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+*.out
+*.test
+*.prof
+*.cover
+*.profile
+*.coverage
+
+# Editor/IDE
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build/dist
+/bin/
+/dist/
+/build/
+/logs/
+
+# Environment
+.env
+.env.local
+.env.*.local
