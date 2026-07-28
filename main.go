@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,71 +13,69 @@ import (
 	"docker-quck-proxy/internal/proxy"
 )
 
-// loadEnvFromFile 加载 .env 文件到环境变量
-func loadEnvFromFile(filename string) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return // 文件不存在或不可读，静默失败
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		// 跳过空行和注释
-		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
-			continue
-		}
-		// 匹配 KEY=VALUE 格式
-		if idx := strings.Index(line, "="); idx != -1 {
-			key := strings.TrimSpace(line[:idx])
-			value := strings.TrimSpace(line[idx+1:])
-			if key != "" {
-				os.Setenv(key, value)
-			}
-		}
-	}
-}
+// 定义命令行标志
+var (
+	upstream   = flag.String("upstream", "", "Upstream Docker Registry (override default)")
+	listen     = flag.String("P", "", "Listen address (short form: -P), also use --listen")
+	logDir     = flag.String("logdir", "", "Log directory (empty to use stdout)")
+	httpProxy  = flag.String("http-proxy", "", "Upstream HTTP proxy for accessing Docker Hub")
+	httpsProxy = flag.String("https-proxy", "", "Upstream HTTPS proxy for accessing Docker Hub")
+	logEnabled = flag.Bool("log-enabled", false, "Enable logging (default: false)")
+)
 
 func main() {
-	// 加载 .env 文件（开发环境用）
-	loadEnvFromFile(".env")
-	fmt.Println("📁 已加载 .env 配置（如果存在）")
+	flag.Parse() // 解析命令行参数
 
 	cfg := proxy.DefaultConfig()
 
-	if up := os.Getenv("UPSTREAM"); up != "" {
+	// 优先级：flag > env var > default
+	// Upstream: flag 优先，否则 env var
+	if *upstream != "" {
+		cfg.Upstream = *upstream
+	} else if up := os.Getenv("UPSTREAM"); up != "" {
 		cfg.Upstream = up
 	}
-	if ln := os.Getenv("LISTEN_ADDR"); ln != "" {
+
+	// ListenAddr: flag 优先，否则 env var
+	if *listen != "" {
+		cfg.ListenAddr = *listen
+	} else if ln := os.Getenv("LISTEN_ADDR"); ln != "" {
 		cfg.ListenAddr = ln
 	}
-	if logDir := os.Getenv("LOG_DIR"); logDir != "" {
-		cfg.LogDir = logDir
+
+	// LogDir: flag 优先，否则 env var
+	if *logDir != "" {
+		cfg.LogDir = *logDir
+	} else if ld := os.Getenv("LOG_DIR"); ld != "" {
+		cfg.LogDir = ld
 	}
-	// 读取日志开关配置（默认 false）
-	if logEnabled := os.Getenv("LOG_ENABLED"); logEnabled != "" {
-		// 解析字符串 "true"/"false" -> bool
-		switch strings.ToLower(logEnabled) {
+
+	// HTTP_PROXY: flag 优先，否则 env var
+	if *httpProxy != "" {
+		cfg.HTTPProxy = *httpProxy
+	} else if hp := os.Getenv("HTTP_PROXY"); hp != "" {
+		cfg.HTTPProxy = hp
+	} else if hps := os.Getenv("HTTPS_PROXY"); hps != "" && cfg.HTTPProxy == "" {
+		// fallback to HTTPS_PROXY if HTTP_PROXY not set
+		cfg.HTTPProxy = hps
+	}
+
+	// LOG_ENABLED: flag 优先，否则 env var
+	if *logEnabled != false { // flag was explicitly set
+		cfg.LogEnabled = *logEnabled
+	} else if le := os.Getenv("LOG_ENABLED"); le != "" {
+		switch strings.ToLower(le) {
 		case "true", "1", "y", "yes":
 			cfg.LogEnabled = true
 		case "false", "0", "n", "no":
 			cfg.LogEnabled = false
 		default:
-			// 无效值，保持默认值 false
-			cfg.LogEnabled = false
+			cfg.LogEnabled = false // default
 		}
 	}
-	// 读取上游代理配置（可选）
-	if proxyAddr := os.Getenv("HTTP_PROXY"); proxyAddr != "" {
-		cfg.HTTPProxy = proxyAddr
-	}
-	if proxyAddr := os.Getenv("HTTPS_PROXY"); proxyAddr != "" && cfg.HTTPProxy == "" {
-		// 如果没有设置 HTTP_PROXY，尝试 HTTPS_PROXY
-		cfg.HTTPProxy = proxyAddr
-	}
 
-	fmt.Printf("[DEBUG] LogDir=%q, LogEnabled=%v, HTTPProxy=%q, Upstream=%q, Listen=%q\n", cfg.LogDir, cfg.LogEnabled, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)
+	fmt.Printf("[DEBUG] LogDir=%q, LogEnabled=%v, HTTPProxy=%q, Upstream=%q, Listen=%q\n",
+		cfg.LogDir, cfg.LogEnabled, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)
 
 	srv, err := proxy.NewServer(cfg)
 	if err != nil {

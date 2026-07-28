@@ -22,7 +22,7 @@
 
 ### GitHub Actions Artifact
 
-在 Pull Request 或 Push 到 master 时，GitHub Actions 会自动构建并上传临时 Artifact（保留30天），可在 Actions 页面下载。
+在 Pull Request 或 Push 到 main 时，GitHub Actions 会自动构建并上传临时 Artifact（保留30天），可在 Actions 页面下载。
 
 ## 工作原理
 
@@ -48,30 +48,32 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 
 > 访问 `http://localhost:5000/health` 可检查服务状态。
 
-### 环境变量配置
+### 命令行参数（推荐）
 
-项目通过环境变量覆盖默认值，可创建 `.env` 文件配置：
+编译后可直接使用命令行标志配置，无需环境变量：
 
 ```bash
-# .env.example
-UPSTREAM=https://registry-1.docker.io
-LISTEN_ADDR=:5000
-LOG_DIR=./logs
-HTTP_PROXY=http://proxy-ip:port   # 可选：上游 HTTP 代理（用于访问 Docker Hub）
-HTTPS_PROXY=https://proxy-ip:port # 可选：上游 HTTPS 代理
-LOG_ENABLED=false                # 日志开关（true/false）
-HOST_PORT=5000
+# 示例：指定上游、监听端口、日志目录和启用日志
+./proxy \
+  --upstream https://registry-1.docker.io \
+  -P :5000 \          # 简写形式
+  --logdir ./logs \
+  --log-enabled true
+
+# 查看所有可用参数
+./proxy --help
 ```
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `UPSTREAM` | `https://registry-1.docker.io` | 上游 Docker Registry |
-| `LISTEN_ADDR` | `:5000` | 监听地址 |
-| `LOG_DIR` | (空) | 日志目录（设为空则输出到 stdout） |
-| `HTTP_PROXY` | (空) | **上游** HTTP 代理（当需要经代理访问 Docker Hub 时设置） |
-| `HTTPS_PROXY` | (空) | **上游** HTTPS 代理 |
-| `LOG_ENABLED` | `false` | **是否启用日志输出**（true/false）|
-| `HOST_PORT` | `5000` | Docker Compose 宿主端口 |
+**参数对照表：**
+
+| 长形式 | 简写 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `--upstream` | (无) | `https://registry-1.docker.io` | 上游 Docker Registry |
+| `-P` / `--listen` | `-P` | `:5000` | 监听地址 |
+| `--logdir` | (无) | (空) | 日志目录（空则输出到 stdout） |
+| `--http-proxy` | (无) | (空) | **上游** HTTP 代理（经代理访问 Docker Hub 时使用） |
+| `--https-proxy` | (无) | (空) | **上游** HTTPS 代理 |
+| `--log-enabled` | (无) | `false` | 是否启用日志输出 |
 
 ⚠️ 注意：`HTTP_PROXY`/`HTTPS_PROXY` 是 **docker-quck-proxy 自身访问上游时的代理**，与下游 Docker Client 的配置无关。下游仍然直接使用 `localhost:5000` 作为镜像源。
 
@@ -83,13 +85,16 @@ curl -L https://github.com/your-org/docker-quck-proxy/releases/download/vX.X.X/p
 chmod +x proxy-linux-amd64
 sudo mv proxy-linux-amd64 /usr/local/bin/proxy
 
-# 启动
-proxy --upstream https://registry-1.docker.io --listen :5000
+# 启动（使用命令行参数）
+proxy \
+  --upstream https://registry-1.docker.io \
+  -P :5000 \
+  --log-enabled false
 ```
 
 ### Windows 下载
 
-下载 `proxy-windows-amd64.zip`，解压后重命名为 `proxy.exe`，放入系统 PATH 即可使用。
+下载 `proxy-windows-amd64.zip`，解压后重命名为 `proxy.exe`，放入系统 PATH 即可使用。通过命令行参数配置方式同 Linux。
 
 ### Docker 部署
 
@@ -107,7 +112,7 @@ docker run -d -p 5000:5000 \
 # 使用默认配置
 docker compose up -d
 
-# 或使用自定义 .env 文件（项目根目录）
+# 或通过 environment 设置
 HOST_PORT=5050 UPSTREAM=https://registry-1.docker.io docker compose up -d
 ```
 
@@ -137,12 +142,12 @@ docker pull localhost:5000/library/alpine
 ## 项目结构
 
 ```
-├── main.go              # 入口点
+├── main.go              # 入口点（支持命令行参数）
 ├── cmd/                 # CLI 子命令（预留 cobra 扩展）
 ├── internal/
-│   ├── config/          # 配置解析（预留 YAML 文件支持）
+│   ├── config/          # Config struct & defaults
 │   └── proxy/
-│       ├── config.go    # Config struct & defaults
+│       ├── config.go    # 配置解析
 │       └── handler.go   # 反向代理 + manifest 重写
 ├── docs/                # 文档
 ├── Dockerfile           # 多阶段构建
@@ -167,7 +172,7 @@ docker pull localhost:5000/library/alpine
 
 项目使用 [GitHub Actions](https://github.com/your-org/docker-quck-proxy/actions) 进行自动化构建：
 
-- **触发事件**：push/pull_request/master、release 创建
+- **触发事件**：push/pull_request/main、release 创建
 - **构建产物**：7 个平台的二进制压缩包
 - **发布方式**：PR/Push → Artifact（30天保留）；Release → Release 附件
 
