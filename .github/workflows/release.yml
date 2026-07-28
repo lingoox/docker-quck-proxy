@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'VERSION'
+      - "VERSION"
 
 permissions:
   contents: write
@@ -18,7 +18,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Read version
         id: version
         run: |
@@ -51,21 +50,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-
       - name: Build binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm | default '' }}
           CGO_ENABLED: 0
         run: |
-          # Determine output name based on platform
           if [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm" ]; then
             output="proxy-armv7hf-linux"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "arm64" ]; then
@@ -79,43 +74,38 @@ jobs:
           elif [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm64" ]; then
             output="proxy-linux-arm64"
           else
-            # Windows or other
             output="proxy-windows-amd64.exe"
           fi
-          echo "Building $output for ${GOOS}/${GOARCH}..."
-          CGO_ENABLED=0 go build -o "$output" .
+          echo "Building $output..."
+          go build -o "$output" .
           echo "Built $output"
-
       - name: Package Unix-like
         if: matrix.goos != 'windows'
         run: |
           if [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm" ]; then
-            tar czf "proxy-armv7hf-linux.tar.gz" "proxy-armv7hf-linux" || echo "Failed to package armv7hf"
+            tar czf "proxy-armv7hf-linux.tar.gz" "proxy-armv7hf-linux"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "arm64" ]; then
-            tar czf "proxy-mac-arm64.tar.gz" "proxy-mac-arm64" || echo "Failed to package mac-arm64"
+            tar czf "proxy-mac-arm64.tar.gz" "proxy-mac-arm64"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            tar czf "proxy-mac-intel.tar.gz" "proxy-mac-intel" || echo "Failed to package mac-intel"
+            tar czf "proxy-mac-intel.tar.gz" "proxy-mac-intel"
           elif [ "${matrix.goos}" = "freebsd" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            tar czf "proxy-freebsd-amd64.tar.gz" "proxy-freebsd-amd64" || echo "Failed to package freebsd"
+            tar czf "proxy-freebsd-amd64.tar.gz" "proxy-freebsd-amd64"
           elif [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            tar czf "proxy-linux-amd64.tar.gz" "proxy-linux-amd64" || echo "Failed to package linux-amd64"
+            tar czf "proxy-linux-amd64.tar.gz" "proxy-linux-amd64"
           elif [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm64" ]; then
-            tar czf "proxy-linux-arm64.tar.gz" "proxy-linux-arm64" || echo "Failed to package linux-arm64"
+            tar czf "proxy-linux-arm64.tar.gz" "proxy-linux-arm64"
           fi
-
       - name: Package Windows zip
         if: matrix.goos == 'windows' && matrix.goarch == 'amd64'
-        run: |
-          zip proxy-windows-amd64.zip proxy-windows-amd64.exe || echo "Failed to zip windows"
-
+        run: zip proxy-windows-amd64.zip proxy-windows-amd64.exe
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: proxy-${{ needs.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: ${{ needs.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             *.tar.gz
             *.zip
-        retention-days: 30
+          retention-days: 30
 
   release:
     needs: [version, build]
@@ -125,7 +115,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
