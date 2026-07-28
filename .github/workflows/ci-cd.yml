@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [ "main" ]
   release:
-    types: [created]  # 当创建 Draft Release 时触发，先构建再 Publish
+    types: [created]
 
 jobs:
   build-all-platforms:
     runs-on: ubuntu-latest
+
+    # 确保 GITHUB_TOKEN 有足够权限来创建 Release
+    permissions:
+      contents: write
+      packages: read
 
     steps:
     - name: Checkout code
@@ -101,4 +106,4 @@ jobs:
         files: |
           proxy-*.tar.gz
           proxy-*.zip
-        token: ${{ secrets.GITHUB_TOKEN }}
+      # 注意：不再需要指定 token，会自动使用 GITHUB_TOKEN
