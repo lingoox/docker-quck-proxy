@@ -2,16 +2,19 @@ package proxy
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Server is a Docker Hub reverse-proxy mirror.
@@ -90,12 +93,32 @@ func NewServer(cfg *Config) (*Server, error) {
 	// Create logger based on configuration
 	logger := NewLogger(cfg)
 
+	// Create HTTP transport, with upstream proxy if configured
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment, // 默认使用 HTTP_PROXY/HTTPS_PROXY env var
+	}
+	if cfg.HTTPProxy != "" {
+		proxyURL, err := url.Parse(cfg.HTTPProxy)
+		if err != nil {
+			return nil, fmt.Errorf("parse proxy URL %q: %w", cfg.HTTPProxy, err)
+		}
+		transport.Proxy = http.ProxyURL(proxyURL)
+	}
+
+	// Wrap transport with TLS config if needed (for HTTPS upstream)
+	// 使用默认的 TLS 配置
+	dialer := &net.Dialer{Timeout: 30 * time.Second}
+	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		return dialer.DialContext(ctx, network, address)
+	}
+
 	director := buildDirector(up, cfg.ListenAddr, logger)
 
 	proxy := &httputil.ReverseProxy{
 		Director:       director,
 		ModifyResponse: modifyResponse(),
 		ErrorHandler:   errorHandler,
+		Transport:      transport, // 关键：设置带代理的 Transport
 	}
 
 	// Wrap proxy to handle health check

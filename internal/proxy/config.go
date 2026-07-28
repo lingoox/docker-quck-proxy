@@ -2,9 +2,10 @@ package proxy
 
 // Config holds the server configuration.
 type Config struct {
-	ListenAddr string `mapstructure:"listen_addr"`
-	Upstream   string `mapstructure:"upstream"`
-	LogDir     string `mapstructure:"log_dir"`
+	ListenAddr  string `mapstructure:"listen_addr"`
+	Upstream    string `mapstructure:"upstream"`
+	LogDir      string `mapstructure:"log_dir"`
+	HTTPProxy   string `mapstructure:"http_proxy"` // Upstream proxy for requests to Docker Hub
 }
 
 // DefaultConfig returns a Config with sensible defaults for a Docker Hub mirror.

@@ -35,6 +35,8 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 UPSTREAM=https://registry-1.docker.io
 LISTEN_ADDR=:5000
 LOG_DIR=./logs
+HTTP_PROXY=http://proxy-ip:port   # 可选：上游 HTTP 代理（用于访问 Docker Hub）
+HTTPS_PROXY=https://proxy-ip:port # 可选：上游 HTTPS 代理
 HOST_PORT=5000
 ```
 
@@ -43,7 +45,11 @@ HOST_PORT=5000
 | `UPSTREAM` | `https://registry-1.docker.io` | 上游 Docker Registry |
 | `LISTEN_ADDR` | `:5000` | 监听地址 |
 | `LOG_DIR` | (空) | 日志目录（设为空则输出到 stdout） |
+| `HTTP_PROXY` | (空) | **上游** HTTP 代理（当需要经代理访问 Docker Hub 时设置） |
+| `HTTPS_PROXY` | (空) | **上游** HTTPS 代理 |
 | `HOST_PORT` | `5000` | Docker Compose 宿主端口 |
+
+⚠️ 注意：`HTTP_PROXY`/`HTTPS_PROXY` 是 **docker-quck-proxy 自身访问上游时的代理**，与下游 Docker Client 的配置无关。下游仍然直接使用 `localhost:5000` 作为镜像源。
 
 ### Docker 部署
 

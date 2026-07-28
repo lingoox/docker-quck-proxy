@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
 	"strings"
+	"syscall"
 
 	"net/http"
 
@@ -55,8 +55,16 @@ func main() {
 	if logDir := os.Getenv("LOG_DIR"); logDir != "" {
 		cfg.LogDir = logDir
 	}
+	// 读取上游代理配置（可选）
+	if proxyAddr := os.Getenv("HTTP_PROXY"); proxyAddr != "" {
+		cfg.HTTPProxy = proxyAddr
+	}
+	if proxyAddr := os.Getenv("HTTPS_PROXY"); proxyAddr != "" && cfg.HTTPProxy == "" {
+		// 如果没有设置 HTTP_PROXY，尝试 HTTPS_PROXY
+		cfg.HTTPProxy = proxyAddr
+	}
 
-	fmt.Printf("[DEBUG] LogDir=%q, Upstream=%q, Listen=%q\n", cfg.LogDir, cfg.Upstream, cfg.ListenAddr)
+	fmt.Printf("[DEBUG] LogDir=%q, HTTPProxy=%q, Upstream=%q, Listen=%q\n", cfg.LogDir, cfg.HTTPProxy, cfg.Upstream, cfg.ListenAddr)
 
 	srv, err := proxy.NewServer(cfg)
 	if err != nil {
