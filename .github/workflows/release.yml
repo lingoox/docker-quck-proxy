@@ -21,10 +21,10 @@ jobs:
 
       - name: Read version
         id: version
-        shell: bash |
+        run: |
           version="$(tr -d '[:space:]' < VERSION)"
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-          echo "tag=v${version}" >> "${GITHUB_OUTPUT}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
   build:
     needs: version
@@ -64,37 +64,31 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm | default '' }}
           CGO_ENABLED: 0
-          VERSION: ${{ needs.version.outputs.version }}
-        shell: bash |
+        run: |
+          # Determine output name based on platform
           if [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm" ]; then
-            platform="armv7hf-linux"
             output="proxy-armv7hf-linux"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "arm64" ]; then
-            platform="mac-arm64"
             output="proxy-mac-arm64"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            platform="mac-intel"
             output="proxy-mac-intel"
-          elif [ "${matrix.goos}" = "freebsd" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            platform="freebsd-amd64"
+          elif [ "${matrix.goos}" = "freebsd" ]; then
             output="proxy-freebsd-amd64"
           elif [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "amd64" ]; then
-            platform="linux-amd64"
             output="proxy-linux-amd64"
           elif [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm64" ]; then
-            platform="linux-arm64"
             output="proxy-linux-arm64"
           else
-            # windows
+            # Windows or other
             output="proxy-windows-amd64.exe"
           fi
-          echo "Building $output for ${GOOS}/${GOARM:-${GOARCH}}..."
+          echo "Building $output for ${GOOS}/${GOARCH}..."
           CGO_ENABLED=0 go build -o "$output" .
           echo "Built $output"
 
       - name: Package Unix-like
         if: matrix.goos != 'windows'
-        shell: bash |
+        run: |
           if [ "${matrix.goos}" = "linux" ] && [ "${matrix.goarch}" = "arm" ]; then
             tar czf "proxy-armv7hf-linux.tar.gz" "proxy-armv7hf-linux" || echo "Failed to package armv7hf"
           elif [ "${matrix.goos}" = "darwin" ] && [ "${matrix.goarch}" = "arm64" ]; then
@@ -111,7 +105,7 @@ jobs:
 
       - name: Package Windows zip
         if: matrix.goos == 'windows' && matrix.goarch == 'amd64'
-        shell: bash |
+        run: |
           zip proxy-windows-amd64.zip proxy-windows-amd64.exe || echo "Failed to zip windows"
 
       - name: Upload artifact
