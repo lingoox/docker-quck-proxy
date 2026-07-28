@@ -102,13 +102,38 @@ jobs:
           proxy-*.zip
         retention-days: 30
 
-    # Replace the old softprops action with official upload-release-asset
-    - name: Upload Release Assets
-      uses: actions/upload-release-asset@v4
+    # ===== Step 4: Attach assets to Release using raw GitHub API (no third-party action) =====
+    - name: Upload Release Assets via API
       if: github.event_name == 'release' && github.event.action == 'created'
-      with:
-        upload_url: ${{ github.events.release.upload_url }}
-        asset_path: |
-          proxy-*.tar.gz
-          proxy-*.zip
-      # 注意：不再需要指定 token，会自动使用 GITHUB_TOKEN
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_UPLOAD_URL: ${{ github.events.release.upload_url }}
+      run: |
+        # Expand the GitHub API upload URL template
+        UPLOAD_URL="${RELEASE_UPLOAD_URL/{+upload_suffix}/}"
+
+        echo "Using upload URL: $UPLOAD_URL"
+        echo "Token available: ${#GITHUB_TOKEN} chars"
+
+        for file in proxy-*.tar.gz proxy-*.zip; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            echo "Uploading $filename..."
+
+            # Use curl to directly upload to the release asset endpoint
+            if curl -fsSL -X PUT \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              --upload-file "$file" \
+              "${UPLOAD_URL}?name=$filename"; then
+              echo "✓ Successfully uploaded $filename"
+            else
+              echo "❌ Failed to upload $filename"
+              exit 1
+            fi
+          else
+            echo "⚠️  Warning: $file not found"
+          fi
+        done
+
+        echo "✅ All Release assets attached successfully!"
