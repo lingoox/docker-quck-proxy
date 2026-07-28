@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main" ]
   release:
-    types: [published]
+    types: [created]  # 当创建 Draft Release 时触发，先构建再 Publish
 
 jobs:
   build-all-platforms:
@@ -96,7 +96,7 @@ jobs:
 
     - name: Publish to Release (if on release event)
       uses: softprops/action-gh-release@v1
-      if: github.event_name == 'release' && github.event.action == 'published'
+      if: github.event_name == 'release' && github.event.action == 'created'
       with:
         files: |
           proxy-*.tar.gz
