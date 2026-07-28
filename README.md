@@ -4,11 +4,11 @@
 
 ## 📥 二进制下载
 
-预编译的二进制包可通过以下两种方式获取：
+预编译的二进制包可通过以下方式获取：
 
-### GitHub Release
+### GitHub Release（最新发布）
 
-点击项目右上角的 **[Releases](https://github.com/your-org/docker-quck-proxy/releases)** 页面，选择对应版本的压缩包下载：
+每次更新版本号后，GitHub Actions 会自动构建所有平台的压缩包并作为 Release 附件发布：
 
 | 平台 | 文件名 |
 |------|--------|
@@ -20,11 +20,36 @@
 | macOS ARM64 (M1/M2) | `proxy-mac-arm64.tar.gz` |
 | FreeBSD x86_64 | `proxy-freebsd-amd64.tar.gz` |
 
+点击项目右上角的 **[Releases](https://github.com/lingoox/docker-quck-proxy/releases)** 页面查看最新版本。
+
+### 本地自行构建
+
+如果想自己编译，确保 Go 环境已安装（Go 1.21+）：
+
+```bash
+# 编译所有平台
+./build-all.sh  # （未来可添加此脚本）
+
+# 或使用单个平台
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o proxy-linux-amd64 .
+```
+
 ### GitHub Actions Artifact
 
-在 Pull Request 或 Push 到 main 时，GitHub Actions 会自动构建并上传临时 Artifact（保留30天），可在 Actions 页面下载。
+在 PR 或推送 VERSION 文件时，GitHub Actions 会自动上传构建产物（Artifact），可在 Actions 页面下载。
 
-## 工作原理
+## 🚀 发布新版本
+
+要发布一个新的版本：
+
+1. **编辑 VERSION 文件**：`echo "1.2.3" > VERSION`
+2. **提交并推送到 main**：`git add VERSION && git commit -m "Release v1.2.3" && git push`
+3. **等待 GitHub Actions 自动构建**：工作流会自动编译所有平台的二进制
+4. **创建 Draft Release**：去 Releases 页面点击 "Draft a new release"，tag 选择 `v1.2.3`，填写描述后保存
+5. **发布**：GitHub Actions 会自动检测到 draft release 创建，并将构建好的附件关联到该 release
+6. **点击 Publish**：你的 Release 就包含了所有平台的下载包！
+
+---
 
 ```
 Docker Client ──► :5000 (our proxy) ──► registry-1.docker.io (upstream)
@@ -88,7 +113,7 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 
 ```bash
 # 以 Linux x86_64 为例
-curl -L https://github.com/your-org/docker-quck-proxy/releases/download/vX.X.X/proxy-linux-amd64.tar.gz | tar xz
+curl -L https://github.com/lingoox/docker-quck-proxy/releases/download/vX.X.X/proxy-linux-amd64.tar.gz | tar xz
 chmod +x proxy-linux-amd64
 sudo mv proxy-linux-amd64 /usr/local/bin/proxy
 
@@ -177,11 +202,11 @@ docker pull localhost:5000/library/alpine
 
 ## 持续集成
 
-项目使用 [GitHub Actions](https://github.com/your-org/docker-quck-proxy/actions) 进行自动化构建：
+项目使用 [GitHub Actions](https://github.com/lingoox/docker-quck-proxy/actions) 进行自动化构建：
 
-- **触发事件**：push/pull_request/main、release 创建
+- **触发事件**：push VERSION tag、PR/pull_request/main、release draft 创建
 - **构建产物**：7 个平台的二进制压缩包
-- **发布方式**：PR/Push → Artifact（30天保留）；Release → Release 附件
+- **发布方式**：PR/Push → Artifact（30天保留）；Release Draft → Release 附件自动关联
 
 ## License
 
