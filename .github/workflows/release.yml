@@ -32,13 +32,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - goos:linux goarch:amd64
-          - goos:linux goarch:arm64
-          - goos:linux goarch:arm goarm:7
-          - goos:windows goarch:amd64
-          - goos:darwin goarch:amd64
-          - goos:darwin goarch:arm64
-          - goos:freebsd goarch:amd64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: arm
+            goarm: 7
+          - goos: windows
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: freebsd
+            goarch: amd64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
