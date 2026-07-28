@@ -2,6 +2,28 @@
 
 轻量级的 Docker Hub 镜像加速代理服务，纯 Go 编写，容器化部署。
 
+## 📥 二进制下载
+
+预编译的二进制包可通过以下两种方式获取：
+
+### GitHub Release
+
+点击项目右上角的 **[Releases](https://github.com/your-org/docker-quck-proxy/releases)** 页面，选择对应版本的压缩包下载：
+
+| 平台 | 文件名 |
+|------|--------|
+| Linux x86_64 | `proxy-linux-amd64.tar.gz` |
+| Linux ARM64 | `proxy-linux-arm64.tar.gz` |
+| Linux ARMv7 (Armbian) | `proxy-armv7hf-linux.tar.gz` |
+| Windows x86_64 | `proxy-windows-amd64.zip` |
+| macOS Intel | `proxy-mac-intel.tar.gz` |
+| macOS ARM64 (M1/M2) | `proxy-mac-arm64.tar.gz` |
+| FreeBSD x86_64 | `proxy-freebsd-amd64.tar.gz` |
+
+### GitHub Actions Artifact
+
+在 Pull Request 或 Push 到 master 时，GitHub Actions 会自动构建并上传临时 Artifact（保留30天），可在 Actions 页面下载。
+
 ## 工作原理
 
 ```
@@ -37,6 +59,7 @@ LISTEN_ADDR=:5000
 LOG_DIR=./logs
 HTTP_PROXY=http://proxy-ip:port   # 可选：上游 HTTP 代理（用于访问 Docker Hub）
 HTTPS_PROXY=https://proxy-ip:port # 可选：上游 HTTPS 代理
+LOG_ENABLED=false                # 日志开关（true/false）
 HOST_PORT=5000
 ```
 
@@ -51,6 +74,22 @@ HOST_PORT=5000
 | `HOST_PORT` | `5000` | Docker Compose 宿主端口 |
 
 ⚠️ 注意：`HTTP_PROXY`/`HTTPS_PROXY` 是 **docker-quck-proxy 自身访问上游时的代理**，与下游 Docker Client 的配置无关。下游仍然直接使用 `localhost:5000` 作为镜像源。
+
+### 下载并安装二进制（Linux/FreeBSD/macOS）
+
+```bash
+# 以 Linux x86_64 为例
+curl -L https://github.com/your-org/docker-quck-proxy/releases/download/vX.X.X/proxy-linux-amd64.tar.gz | tar xz
+chmod +x proxy-linux-amd64
+sudo mv proxy-linux-amd64 /usr/local/bin/proxy
+
+# 启动
+proxy --upstream https://registry-1.docker.io --listen :5000
+```
+
+### Windows 下载
+
+下载 `proxy-windows-amd64.zip`，解压后重命名为 `proxy.exe`，放入系统 PATH 即可使用。
 
 ### Docker 部署
 
@@ -108,6 +147,7 @@ docker pull localhost:5000/library/alpine
 ├── docs/                # 文档
 ├── Dockerfile           # 多阶段构建
 ├── docker-compose.yml   # 一键部署
+├── .github/workflows/   # CI/CD 工作流（多平台自动构建）
 └── README.md
 ```
 
@@ -122,6 +162,14 @@ docker pull localhost:5000/library/alpine
 | `POST /v2/<name>/blobs/uploads` | ⏸️ | Blob 上传（push，后续支持） |
 | `GET /tokens?service=...` | ✅ | Token 认证（已修复） |
 | `GET /health` | ✅ | 健康检查端点 |
+
+## 持续集成
+
+项目使用 [GitHub Actions](https://github.com/your-org/docker-quck-proxy/actions) 进行自动化构建：
+
+- **触发事件**：push/pull_request/master、release 创建
+- **构建产物**：7 个平台的二进制压缩包
+- **发布方式**：PR/Push → Artifact（30天保留）；Release → Release 附件
 
 ## License
 

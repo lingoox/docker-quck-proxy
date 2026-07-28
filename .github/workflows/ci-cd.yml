@@ -1,0 +1,98 @@
+name: Build & Distribute docker-quck-proxy
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  release:
+    types: [created]
+
+jobs:
+  build-all-platforms:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Build all platform binaries
+      run: |
+        # Helper function to build a binary for a platform
+        build() {
+          GOOS=$1 GOARCH=$2 GOARM="${3:-}" CGO_ENABLED=0 go build -o proxy-$4 .
+          echo "Built $4"
+        }
+
+        # Linux x86_64
+        build linux amd64 "" linux-amd64
+
+        # Linux ARM64
+        build linux arm64 "" linux-arm64
+
+        # Linux ARMv7 hard-float (Armbian)
+        build linux arm 7 armv7hf-linux
+
+        # Windows x86_64
+        build windows amd64 "" windows-amd64
+
+        # macOS Intel
+        build darwin amd64 "" mac-intel
+
+        # macOS ARM64 (Apple Silicon)
+        build darwin arm64 "" mac-arm64
+
+        # FreeBSD
+        build freebsd amd64 "" freebsd-amd64
+
+        echo "All binaries:"
+        ls -lh proxy-*
+
+    - name: Create packages
+      run: |
+        # Create tar.gz for Unix-like platforms
+        tar czf proxy-linux-amd64.tar.gz proxy-linux-amd64
+        tar czf proxy-linux-arm64.tar.gz proxy-linux-arm64
+        tar czf proxy-armv7hf-linux.tar.gz proxy-armv7hf-linux
+        tar czf proxy-mac-intel.tar.gz proxy-mac-intel
+        tar czf proxy-mac-arm64.tar.gz proxy-mac-arm64
+        tar czf proxy-freebsd-amd64.tar.gz proxy-freebsd-amd64
+
+        # Create zip for Windows
+        zip proxy-windows-amd64.zip proxy-windows-amd64.exe
+
+        echo "Packages:"
+        ls -lh proxy-*.tar.gz proxy-*.zip
+
+    - name: Upload artifacts (for PR/push)
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-quck-proxy-binaries
+        path: |
+          proxy-*.tar.gz
+          proxy-*.zip
+        retention-days: 30
+
+    - name: Publish to Release (if on release event)
+      uses: softprops/action-gh-release@v1
+      if: github.event_name == 'release' && github.event.action == 'published'
+      with:
+        files: |
+          proxy-*.tar.gz
+          proxy-*.zip
+        token: ${{ secrets.GITHUB_TOKEN }}
