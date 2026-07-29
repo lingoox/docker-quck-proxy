@@ -1,5 +1,9 @@
 # Docker-Quck-Proxy
 
+[![Release](https://img.shields.io/github/v/release/lingoox/docker-quck-proxy)](https://github.com/lingoox/docker-quck-proxy/releases)
+[![Build](https://github.com/lingoox/docker-quck-proxy/actions/workflows/release.yml/badge.svg)](https://github.com/lingoox/docker-quck-proxy/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 轻量级的 Docker Hub 镜像加速代理服务，纯 Go 编写，容器化部署。
 
 ## 📥 二进制下载
@@ -40,14 +44,23 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o proxy-linux-amd64 .
 
 ## 🚀 发布新版本
 
-要发布一个新的版本：
+要发布一个新的版本，只需两步：
 
-1. **编辑 VERSION 文件**：`echo "1.2.3" > VERSION`
-2. **提交并推送到 main**：`git add VERSION && git commit -m "Release v1.2.3" && git push`
-3. **等待 GitHub Actions 自动构建**：工作流会自动编译所有平台的二进制
-4. **创建 Draft Release**：去 Releases 页面点击 "Draft a new release"，tag 选择 `v1.2.3`，填写描述后保存
-5. **发布**：GitHub Actions 会自动检测到 draft release 创建，并将构建好的附件关联到该 release
-6. **点击 Publish**：你的 Release 就包含了所有平台的下载包！
+```bash
+# 1. 更新版本号（例如发布 1.0.0）
+echo "1.0.0" > VERSION
+
+# 2. 提交并推送到 main
+git add VERSION && git commit -m "Release v1.0.0" && git push
+```
+
+然后 GitHub Actions 会自动完成一切：
+- ✅ 编译 7 个平台的二进制
+- ✅ 打包为 `.tar.gz` / `.zip`
+- ✅ 自动创建 Release `v1.0.0`
+- ✅ 上传所有平台包到 Release Asset
+
+去 **[Releases](https://github.com/lingoox/docker-quck-proxy/releases)** 页面就能看到下载链接！🎉
 
 ---
 
@@ -112,7 +125,8 @@ UPSTREAM=https://registry-1.docker.io LISTEN_ADDR=:5000 go run .
 ### 下载并安装二进制（Linux/FreeBSD/macOS）
 
 ```bash
-# 以 Linux x86_64 为例
+# 查看最新版本号，替换下方 vX.X.X 为实际版本
+# 以 Linux x86_64 为例：
 curl -L https://github.com/lingoox/docker-quck-proxy/releases/download/vX.X.X/proxy-linux-amd64.tar.gz | tar xz
 chmod +x proxy-linux-amd64
 sudo mv proxy-linux-amd64 /usr/local/bin/proxy
@@ -202,11 +216,13 @@ docker pull localhost:5000/library/alpine
 
 ## 持续集成
 
-项目使用 [GitHub Actions](https://github.com/lingoox/docker-quck-proxy/actions) 进行自动化构建：
+项目使用 [GitHub Actions](https://github.com/lingoox/docker-quck-proxy/actions) 进行自动化构建和发布：
 
-- **触发事件**：push VERSION tag、PR/pull_request/main、release draft 创建
-- **构建产物**：7 个平台的二进制压缩包
-- **发布方式**：PR/Push → Artifact（30天保留）；Release Draft → Release 附件自动关联
+- **触发机制**：推送 `VERSION` 文件修改 ✅
+- **构建平台**：7 个平台（Linux/Windows/macOS/FreeBSD/Armbian）
+- **输出形式**：`.tar.gz`（Unix）和 `.zip`（Windows）压缩包
+- **发布方式**：自动创建 Release 并上传所有资产 🚀
+- **版本管理**：通过 `VERSION` 文件集中控制版本号
 
 ## License
 
