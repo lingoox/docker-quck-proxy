@@ -1,7 +1,6 @@
 name: Build and Release
 
 on:
-  workflow_dispatch:
   push:
     paths:
       - "VERSION"
@@ -10,97 +9,66 @@ permissions:
   contents: write
 
 jobs:
-  version:
+  build:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+
       - id: version
         run: |
-          v=$(cat VERSION | tr -d ' \t\n\r')
+          v=$(tr -d '[:space:]' < VERSION)
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
 
-  build:
-    needs: version
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-            name: linux-amd64
-          - os: linux
-            arch: arm64
-            name: linux-arm64
-          - os: linux
-            arch: arm
-            armv: 7
-            name: armv7hf-linux
-          - os: windows
-            arch: amd64
-            name: windows-amd64
-          - os: darwin
-            arch: amd64
-            name: mac-intel
-          - os: darwin
-            arch: arm64
-            name: mac-arm64
-          - os: freebsd
-            arch: amd64
-            name: freebsd-amd64
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Build
+      - name: Build all platforms
+        run: |
+          build() {
+            os=$1 arch=$2 armv=$3 name=$4
+            echo "Building proxy-$name ($os $arch)..."
+            bin="proxy-$name"
+            if [ "$os" = "windows" ]; then
+              bin="${bin}.exe"
+            fi
+            GOOS=$os GOARCH=$arch GOARM=$armv CGO_ENABLED=0 go build -o "$bin" .
+            if [ "$os" = "windows" ]; then
+              zip "${bin%.exe}.zip" "$bin"
+            else
+              tar czf "${bin}.tar.gz" "$bin"
+            fi
+          }
+          build linux amd64 "" linux-amd64
+          build linux arm64 "" linux-arm64
+          build linux arm 7 armv7hf-linux
+          build darwin amd64 "" mac-intel
+          build darwin arm64 "" mac-arm64
+          build freebsd amd64 "" freebsd-amd64
+          build windows amd64 "" windows-amd64
+
+      - name: List packages
+        run: ls -lh *.tar.gz *.zip 2>/dev/null || echo "No packages yet"
+
+      - name: Create Release
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
-          GOARM: ${{ matrix.armv }}
-          CGO_ENABLED: 0
+          GH_TOKEN: ${{ github.token }}
         run: |
-          bin="proxy-${{ matrix.name }}"
-          if [ "${{ matrix.os }}" = "windows" ]; then
-            bin="$bin.exe"
+          tag="v${{ steps.version.outputs.version }}"
+          echo "Creating release $tag..."
+
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "Release $tag already exists. Uploading assets to it..."
+            gh release upload "$tag" *.tar.gz *.zip --clobber
+          else
+            gh release create "$tag" \
+              *.tar.gz *.zip \
+              --title "$tag" \
+              --notes "Docker-quck-proxy $tag" \
+              --verify-tag=false
           fi
-          go build -o "$bin" .
-
-      - name: Package tar.gz
-        if: matrix.os != 'windows'
-        run: |
-          bin="proxy-${{ matrix.name }}"
-          tar czf "${bin}.tar.gz" "$bin"
-
-      - name: Package zip (Windows)
-        if: matrix.os == 'windows'
-        run: |
-          zip proxy-windows-amd64.zip proxy-windows-amd64.exe
-
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: "*.tar.gz"
-          retention-days: 30
-
-  release:
-    needs: [version, build]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.version.outputs.tag }}
-          name: ${{ needs.version.outputs.tag }}
-          files: "dist/**/*.tar.gz"
-          draft: false
-          prerelease: false
+          echo "✅ Done! Release: https://github.com/${{ github.repository }}/releases/tag/$tag"
