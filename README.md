@@ -162,6 +162,36 @@ docker compose up -d
 HOST_PORT=5050 UPSTREAM=https://registry-1.docker.io docker compose up -d
 ```
 
+### 📋 Linux 管理脚本（推荐）
+
+项目提供了一个全功能的管理脚本，支持一键安装、配置和维护：
+
+```bash
+# 下载管理脚本
+curl -O https://raw.githubusercontent.com/lingoox/docker-quck-proxy/main/scripts/docker-quck-proxy-manager.sh
+
+# 赋予执行权限
+chmod +x docker-quck-proxy-manager.sh
+
+# 运行管理面板（会自动检测并安装合适平台的版本）
+./docker-quck-proxy-manager.sh
+```
+
+**脚本功能菜单：**
+
+| 选项 | 功能 | 说明 |
+|------|------|------|
+| `1` | 📥 安装 | 自动检测平台，下载最新版本并安装为 systemd 服务 |
+| `2` | 🔄 重启 | 重启代理服务 |
+| `3` | 📊 查看状态 | 显示服务运行状态、当前配置、最近日志 |
+| `4` | ⏹ 停止 | 停止代理服务 |
+| `5` | ⚙️ 切换配置 | 交互式修改上游地址、监听端口、日志开关等参数 |
+| `6` | 📋 查看配置 | 显示当前配置文件内容 |
+| `7` | 🗑 卸载 | 完全移除二进制、配置、日志和 systemd 服务 |
+| `0` | 🚪 退出 | 退出管理面板 |
+
+> ⚠️ 脚本会自动提权到 root（systemctl 需要管理员权限）
+
 ### Docker 客户端配置
 
 #### 方法一：daemon.json（推荐）
@@ -195,10 +225,13 @@ docker pull localhost:5000/library/alpine
 │   └── proxy/
 │       ├── config.go    # 配置解析
 │       └── handler.go   # 反向代理 + manifest 重写
+├── scripts/
+│   └── docker-quck-proxy-manager.sh  # 🔧 Linux 管理脚本（安装/配置/启停）
 ├── docs/                # 文档
 ├── Dockerfile           # 多阶段构建
 ├── docker-compose.yml   # 一键部署
-├── .github/workflows/   # CI/CD 工作流（多平台自动构建）
+├── VERSION              # 📌 版本号文件
+├── .github/workflows/   # CI/CD 工作流（多平台自动构建 + Release）
 └── README.md
 ```
 
